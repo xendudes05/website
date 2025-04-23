@@ -1,11 +1,12 @@
-from flask import Flask, render_template, redirect, abort, request, make_response, jsonify
+from flask import Flask, render_template, redirect, flash, url_for
+from flask_login import LoginManager, login_user, login_required, logout_user
+
 from data import db_session
 from data.events import Events
 from data.users import User
-from form.user import RegisterForm
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from form.loginform import LoginForm
 from form.events import EventsForm
+from form.loginform import LoginForm
+from form.user import RegisterForm
 
 app = Flask(__name__)
 login_manager = LoginManager()
@@ -70,6 +71,15 @@ def login():
 def logout():
     logout_user()
     return redirect("/")
+
+
+@app.route('/create-day', methods=['GET', 'POST'])
+def create_day():
+    form = EventsForm()
+    if form.validate_on_submit():
+        flash('День успешно создан!', 'success')
+        return redirect(url_for('index'))
+    return render_template('events.html', form=form)
 
 
 # @app.route('/events', methods=['GET', 'POST'])
@@ -149,6 +159,8 @@ def main():
     db_session.global_init("db/days.db")
     # app.register_blueprint(events_api.blueprint)
     app.run()
+
+
 #
 #
 # @app.errorhandler(404)

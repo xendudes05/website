@@ -1,25 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if current_user.is_authenticated %}
-    <a href="/news" class="btn btn-secondary">Добавить событие</a>
-{% endif %}
-{% for item in events%}
-<div class="container text-center">
-    <div class="row">
-    <div class="col-4">{{item.time}}</div>
-    <div class="col-8">{{item.title}}\n{{item.mood}}</div>
-    </div>
+<div class="container">
+    <h1 class="text-center">События</h1>
+    {% if current_user.is_authenticated %}
+        <div class="text-center mb-3">
+            <a href="/news" class="btn btn-secondary">Добавить событие</a>
+        </div>
+    {% endif %}
+
+    {% for item in events %}
+        <article class="row mb-3 border p-3 rounded">
+            <div class="col-4">
+                <time datetime="{{ item.time }}">{{ item.time }}</time>
+            </div>
+            <div class="col-8">
+                <h2>{{ item.title }}</h2>
+                <p class="mood" style="color: {% if item.mood == 'happy' %}green{% elif item.mood == 'sad' %}blue{% else %}gray{% endif %};">
+                    Настроение: {{ item.mood }}
+                </p>
+            </div>
+            {% if current_user.is_authenticated and current_user == item.user %}
+                <div class="col-12 mt-2">
+                    <a href="/events/{{ item.id }}" class="btn btn-warning">Изменить</a>
+                    <a href="/events_delete/{{ item.id }}" class="btn btn-danger">Удалить</a>
+                </div>
+            {% endif %}
+        </article>
+    {% endfor %}
 </div>
-<!--{% if current_user.is_authenticated and current_user == item.user %}-->
-<!--    <div>-->
-<!--        <a href="/events/{{ item.id }}" class="btn btn-warning">-->
-<!--            Изменить-->
-<!--        </a>-->
-<!--        <a href="/events_delete/{{ item.id }}" class="btn btn-danger">-->
-<!--            Удалить-->
-<!--        </a>-->
-<!--    </div>-->
-<!--{% endif %}-->
-{% endfor %}
 {% endblock %}
