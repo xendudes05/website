@@ -28,6 +28,51 @@
         .btn-spacing {
             margin-bottom: 10px;
         }
+        .profile-pic {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 2px solid #dee2e6;
+        }
+        .time-scale {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 5px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .event {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .timeline {
+            position: relative;
+            padding: 1rem 0;
+            margin-left: 30px;
+            border-left: 3px solid #dee2e6;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .timeline-time {
+            position: absolute;
+            left: -70px;
+            top: 12px;
+            font-weight: bold;
+            color: #6c757d;
+        }
     </style>
     <title>{{title}}</title>
 </head>
@@ -46,26 +91,9 @@
     {% endif %}
 </nav>
 </header>
-<main role="main" class="container py-4">
-  <div class="row">
-  <div class="col-md-4 mb-4">
-  <div class="card card-custom">
-  <div class="card-body">
-  <h4 class="card-title">Добро пожаловать, {{ current_user.name }}!</h4>
-  <p class="card-text">Это ваш личный дневник продуктивности. Здесь вы можете планировать свой идеальный день,
-      отслеживать активность и управлять своим настроением.</p>
-      <div class="d-flex flex-column mt-3">
-          <a class="btn btn-primary btn-custom btn-spacing" href="/create-day">+ Создать день</a>
-          <a class="btn btn-secondary btn-custom" href="/import-template">Импортировать шаблон</a>
-      </div>
-  </div>
-  </div>
-  </div>
 
-  <div class="col-md-8">
+<main role="main" class="container py-4">
     {% block content %}{% endblock %}
-  </div>
-  </div>
 </main>
 </body>
 </html>
