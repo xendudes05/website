@@ -1,16 +1,18 @@
 import os
-from datetime import datetime
+from datetime import datetime, date
 
-from flask import Flask, render_template, redirect, flash, url_for, request, abort
+from flask import Flask, render_template, redirect, flash, url_for, request, abort, make_response, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
 
-from data import db_session
+from data import db_session, events_api, users_api
 from data.events import Events
 from data.users import User
 from form.events import EventsForm
 from form.loginform import LoginForm
 from form.user import RegisterForm
+
+from static.lists.templates_list import templates
 
 app = Flask(__name__)
 login_manager = LoginManager()
@@ -18,7 +20,7 @@ login_manager.init_app(app)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
 
 UPLOAD_FOLDER = 'static/avatars'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 
 @login_manager.user_loader
@@ -32,7 +34,12 @@ def index():
     db_sess = db_session.create_session()
     events = []
     if current_user.is_authenticated:
-        events = db_sess.query(Events).filter(Events.user_id == current_user.id).order_by(Events.time).all()
+        if current_user.id != 1:
+            events = db_sess.query(Events).filter(Events.user_id == current_user.id).order_by(Events.time).all()
+        else:
+            events = db_sess.query(Events).order_by(Events.time).all()
+        for event in events:
+            event.formatted_date = event.time.strftime('%d %B %Y')
     return render_template("index.html", events=events, title='Идеальный день')
 
 
@@ -82,56 +89,37 @@ def logout():
     return redirect("/")
 
 
-# @app.route('/account')
-# def account():
-#     db_sess = db_session.create_session()
-#     events = db_sess.query(Events)
-#     return render_template("account.html", events=events)
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @app.route('/account', methods=['GET', 'POST'])
+@login_required
 def account():
+    db_sess = db_session.create_session()
+
     if request.method == 'POST':
         avatar = request.files.get('avatar')
-        if avatar:
+        if avatar and allowed_file(avatar.filename):
             filename = secure_filename(avatar.filename)
             filepath = os.path.join(UPLOAD_FOLDER, filename)
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
             avatar.save(filepath)
             current_user.avatar = filename
 
-        db_sess = db_session.create_session()
-        db_sess.commit()
-
-        return redirect('/account')
-    db_sess = db_session.create_session()
-    events = db_sess.query(Events).filter_by(user_id=current_user.id).order_by(Events.time).all()
-    return render_template('account.html', user=current_user, events=events,  title='Профиль')
-
-
-def allowed_file(filename):
-    return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def save_avatar(avatar):
-    if avatar and allowed_file(avatar.filename):
-        filename = secure_filename(avatar.filename)
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        avatar.save(filepath)
-        return filepath
-    return None
-
-
-@app.route("/update_profile", methods=["POST"])
-def update_profile():
-    user = current_user
-    if "avatar" in request.files:
-        avatar = request.files["avatar"]
-        if avatar.filename:
-            avatar_path = save_avatar(avatar)
-            user.avatar_path = avatar_path
-    return redirect("/account")
+            db_sess.merge(current_user)
+            db_sess.commit()
+            return redirect('/account')
+    if current_user.is_authenticated:
+        if current_user.id != 1:
+            events = db_sess.query(Events).filter(Events.user_id == current_user.id).order_by(Events.time).all()
+        else:
+            events = db_sess.query(Events).order_by(Events.time).all()
+        for event in events:
+            event.formatted_date = event.time.strftime('%d %B %Y')
+        return render_template('account.html', user=current_user, events=events, title='Профиль')
+    else:
+        abort(400)
 
 
 @app.route('/account/event/add', methods=['GET', 'POST'])
@@ -142,11 +130,11 @@ def add_event():
     activity_type = request.form.get('activity_type')
     mood = request.form.get('mood')
     music = request.form.get('music')
-    print(time_str)
 
     if time_str:
         try:
-            time = datetime.strptime(time_str, '%H:%M')
+            time = datetime.strptime(time_str, '%H:%M').time()
+            event_datetime = datetime.combine(date.today(), time)
         except ValueError:
             flash('Неверный формат даты/времени', 'danger')
             return redirect("/account")
@@ -154,7 +142,7 @@ def add_event():
         db_sess = db_session.create_session()
         events = Events()
         events.title = title
-        events.time = time
+        events.time = event_datetime
         events.activity_type = activity_type
         events.mood = mood
         events.music = music
@@ -171,10 +159,11 @@ def add_event():
 def add_events():
     form = EventsForm()
     if form.validate_on_submit():
+        event_datetime = datetime.combine(date.today(), form.time.data)
         db_sess = db_session.create_session()
         events = Events()
         events.title = form.title.data
-        events.time = form.time.data
+        events.time = event_datetime
         events.activity_type = form.activity_type.data
         events.mood = form.mood.data
         events.music = form.music.data
@@ -192,8 +181,11 @@ def edit_events(id):
     form = EventsForm()
     if request.method == "GET":
         db_sess = db_session.create_session()
-        event = db_sess.query(Events).filter(Events.id == id,
-                                          Events.user == current_user).first()
+        if current_user.id != 1:
+            event = db_sess.query(Events).filter(Events.id == id,
+                                                 Events.user == current_user).first()
+        else:
+            event = db_sess.query(Events).filter(Events.id == id).first()
         if event:
             form.title.data = event.title
             form.time.data = event.time.time()
@@ -204,8 +196,11 @@ def edit_events(id):
             abort(404)
     if form.validate_on_submit():
         db_sess = db_session.create_session()
-        event = db_sess.query(Events).filter(Events.id == id,
-                                          Events.user == current_user).first()
+        if current_user.id != 1:
+            event = db_sess.query(Events).filter(Events.id == id,
+                                              Events.user == current_user).first()
+        else:
+            event = db_sess.query(Events).filter(Events.id == id).first()
         if event:
             event.title = form.title.data
             event.time = datetime.combine(datetime.today(), form.time.data)
@@ -226,33 +221,68 @@ def edit_events(id):
 @login_required
 def events_delete(id):
     db_sess = db_session.create_session()
-    events = db_sess.query(Events).filter(Events.id == id,
-                                      Events.user == current_user
-                                      ).first()
+    if current_user.id != 1:
+        events = db_sess.query(Events).filter(Events.id == id,
+                                          Events.user == current_user
+                                          ).first()
+    else:
+        events = db_sess.query(Events).filter(Events.id == id).first()
     if events:
         db_sess.delete(events)
         db_sess.commit()
     else:
         abort(404)
-    return redirect('/')
+    return redirect('/account')
+
+
+@app.route('/import-template', methods=['POST'])
+@login_required
+def import_template():
+    template_name = request.form.get('template_name')
+    selected_template = templates.get(template_name)
+
+    db_sess = db_session.create_session()
+
+    for event_data in selected_template:
+        event_time = datetime.strptime(event_data['time'], "%H:%M").time()
+        event_datetime = datetime.combine(date.today(), event_time)
+
+        existing_event = db_sess.query(Events).filter_by(
+            user_id=current_user.id,
+            time=event_datetime,
+            title=event_data['title']
+        ).first()
+
+        if not existing_event:
+            new_event = Events(
+                title=event_data['title'],
+                time=event_datetime,
+                activity_type=event_data['activity_type'],
+                mood=event_data['mood'],
+                music=event_data['music'],
+                user_id=current_user.id
+            )
+            db_sess.add(new_event)
+
+    db_sess.commit()
+    return redirect('/account')
 
 
 def main():
     db_session.global_init("db/days.db")
-    # app.register_blueprint(events_api.blueprint)
+    app.register_blueprint(events_api.blueprint)
+    app.register_blueprint(users_api.blueprint)
     app.run()
 
 
-#
-#
-# @app.errorhandler(404)
-# def not_found(error):
-#     return make_response(jsonify({'error': 'Not found'}), 404)
-#
-#
-# @app.errorhandler(400)
-# def bad_request(_):
-#     return make_response(jsonify({'error': 'Bad Request'}), 400)
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+
+
+@app.errorhandler(400)
+def bad_request(_):
+    return make_response(jsonify({'error': 'Bad Request'}), 400)
 
 
 if __name__ == '__main__':

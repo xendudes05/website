@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Выберите шаблон дня</h2>
+
+    <form method="post">
+        {% for template in templates %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">{{ template.name }}</h5>
+                <ul>
+                    {% for event in template.events %}
+                    <li>{{ event.time }} — {{ event.title }} ({{ event.activity_type }})</li>
+                    {% endfor %}
+                </ul>
+                <button name="template_index" value="{{ loop.index0 }}" type="submit" class="btn btn-success">Импортировать</button>
+            </div>
+        </div>
+        {% endfor %}
+    </form>
+
+    <a href="/" class="btn btn-secondary mt-3">Назад на главную</a>
+</div>
+{% endblock %}

@@ -1,20 +1,28 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% if current_user.is_authenticated %}
 <div class="row">
 <div class="col-md-4">
-    <div class="card card-custom p-3 text-center">
-        <form method="post" enctype="multipart/form-data">
-    <div class="form-group">
-        <label>Аватар:</label><br>
+    <div class="card card-custom p-4 text-center shadow">
+    <div class="mb-3">
         {% if current_user.avatar %}
-            <img src="{{ url_for('static', filename=current_user.avatar) }}" class="img-thumbnail mb-2" width="150">
+            <img src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" class="rounded-circle" width="150" height="150">
+        {% else %}
+            <img src="{{ url_for('static', filename='avatars/default.png') }}" class="rounded-circle" width="150" height="150">
         {% endif %}
-        <input type="file" class="form-control-file" id="avatar" name="avatar">
     </div>
-    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
-</form>
-    </div>
+    <h5 class="card-title">{{ current_user.name }}</h5>
+    <p class="card-text">{{ current_user.email }}</p>
+
+    <form method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="avatar">Изменить аватар</label>
+            <input type="file" class="form-control-file mb-2" id="avatar" name="avatar">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
+    </form>
+</div>
 </div>
 
 <div class="col-md-8">
@@ -50,35 +58,60 @@
 </div>
 
 <hr>
+<div class="row">
+  <div class="col-md-8 mb-8">
+    <div class="container mt-5">
+        <h2 class="mb-4 text-center">Ваши события</h2>
+        {% if events %}
+            <div class="timeline">
+                {% set current_day = None %}
+                {% for event in events %}
+                    {% if current_day != event.formatted_date %}
+                        {% if current_day is not none %}
+                            </div>
+                        {% endif %}
+                        <div class="timeline-day">
+                            <h4>{{ event.formatted_date }}</h4>
+                        </div>
+                        {% set current_day = event.formatted_date %}
+                    {% endif %}
+                    <div class="timeline-item">
+                        <div class="timeline-time">{{ event.time.strftime('%H:%M') }}</div>
+                        <div class="card-body">
+                            <div class="event">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="event-time">{{ event.time.strftime('%H:%M') }}</div>
+                                        <div class="event-type">{{ event.title }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="badge badge-info">Настроение: {{ event.mood }}</span><br>
+                                        <span class="badge badge-secondary">Музыка: {{ event.music }}</span>
+                                    </div>
+                                </div>
+                                <p class="mt-3 mb-0">{{ event.activity_type }}</p>
+                                <a type="button" class="btn btn-primary btn-sm" href="/events/{{ event.id }}">
+                                    Редактировать
+                                </a>
 
-<h4>Ваши события</h4>
-{% for event in events %}
-<div class="card mb-3">
-    <div class="card-body">
-        <div class="event">
-        <div class="d-flex justify-content-between">
-        <div>
-            <div class="event-time">{{ event.time.strftime('%H:%M') }}</div>
-            <div class="event-type">{{ event.title }}</div>
-        </div>
-        <div class="text-right">
-            <span class="badge badge-info">Настроение: {{ event.mood }}</span><br>
-            <span class="badge badge-secondary">Музыка: {{ event.music }}</span>
-        </div>
-        </div>
-        <p class="mt-3 mb-0">{{ event.activity_type }}</p>
-
-        <a type="button" class="btn btn-primary btn-sm" href="/events/{{ event.id }}">
-            Редактировать
-        </a>
-
-        <a type="button" class="btn btn-danger btn-sm" href="/events_delete/{{ event.id }}">
-            Удалить
-        </a>
-        </div>
+                                <a type="button" class="btn btn-danger btn-sm" href="/events_delete/{{ event.id }}">
+                                    Удалить
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>У вас пока нет событий. Добавьте их в профиле!</p>
+        {% endif %}
     </div>
+  </div>
 </div>
-{% endfor %}
 </div>
-</div>
+{% else %}
+    <div class="alert alert-warning" role="alert">
+        Войдите в аккаунт, чтобы увидеть свои события!
+    </div>
+{% endif %}
 {% endblock %}
