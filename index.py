@@ -33,6 +33,7 @@ def load_user(user_id):
 def index():
     db_sess = db_session.create_session()
     events = []
+    today = datetime.now().date()
     if current_user.is_authenticated:
         if current_user.id != 1:
             events = db_sess.query(Events).filter(Events.user_id == current_user.id).order_by(Events.time).all()
@@ -40,7 +41,7 @@ def index():
             events = db_sess.query(Events).order_by(Events.time).all()
         for event in events:
             event.formatted_date = event.time.strftime('%d %B %Y')
-    return render_template("index.html", events=events, title='Идеальный день')
+    return render_template("index.html", events=events, today=today, templates=templates, title='Идеальный день')
 
 
 @app.route('/register', methods=['GET', 'POST'])

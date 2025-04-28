@@ -1,80 +1,104 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="jumbotron text-center">
+  <h1 class="display-4">Добро пожаловать в "Идеальный день"!</h1>
+  <p class="lead">Создайте свой идеальный распорядок дня или выберите готовый шаблон!</p>
+
+  {% if current_user.is_authenticated %}
+    <a class="btn btn-primary btn-lg m-2" href="/events" role="button">Создать своё событие</a>
+    <a class="btn btn-secondary btn-lg m-2" href="#templates" role="button">Выбрать шаблон</a>
+  {% else %}
+    <a class="btn btn-success btn-lg" href="/login" role="button">Войти</a>
+  {% endif %}
+</div>
 {% if current_user.is_authenticated %}
-  <div class="row">
-  <div class="col-md-4 mb-4">
-  <div class="card card-custom">
-  <div class="card-body">
-  <h4 class="card-title">Добро пожаловать, {{ current_user.name }}!</h4>
-  <p class="card-text">Это ваш личный дневник продуктивности. Здесь вы можете планировать свой идеальный день,
-      отслеживать активность и управлять своим настроением.</p>
-      <div class="d-flex flex-column mt-3">
-          <a class="btn btn-primary btn-custom btn-spacing" href="/events">+ Создать день</a>
-          <div class="card card-custom p-3 mt-4">
-          <h4>Импортировать шаблон</h4>
-          <form method="post" action="/import-template">
-            <div class="form-group">
-              <select name="template_name" class="form-control" required>
-                <option value="">Выберите шаблон</option>
-                <option value="workday">Рабочий день</option>
-                <option value="weekend">Выходной день</option>
-                <option value="studyday">Учебный день</option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-secondary btn-block">Импортировать шаблон</button>
-          </form>
+<div class="container" id="templates">
+  <h2 class="text-center mb-4">Готовые шаблоны дней</h2>
+  <form method="post" action="/import-template">
+    <div class="row">
+      {% for key, day in templates.items() %}
+      <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm animate__animated animate__fadeInUp">
+          <div class="card-body text-center">
+            <h5 class="card-title">
+              {% if key == 'workday' %}Рабочий день{% elif key == 'weekend' %}Выходной{% elif key == 'studyday' %}Учебный день{% else %}Другой день{% endif %}
+            </h5>
+            <ul class="list-unstyled">
+              {% for event in day %}
+              <li>{{ event.time }} — {{ event.title }}</li>
+              {% endfor %}
+            </ul>
+            <button type="submit" name="template_name" value="{{ key }}" class="btn btn-outline-primary btn-block mt-3">
+              Импортировать этот шаблон
+            </button>
           </div>
-          </div>
+        </div>
       </div>
-  </div>
-  </div>
+      {% endfor %}
+    </div>
+  </form>
+</div>
 {% endif %}
 {% if current_user.is_authenticated %}
-    <div class="col-md-8 mb-8">
-        <div class="container mt-5">
-            <h2 class="mb-4 text-center">Ваш таймлайн</h2>
-            {% if events %}
-                <div class="timeline">
-                    {% set current_day = None %}
-                    {% for event in events %}
-                        {% if current_day != event.formatted_date %}
-                            {% if current_day is not none %}
-                                </div>
-                            {% endif %}
-                            <div class="timeline-day">
-                                <h4>{{ event.formatted_date }}</h4>
-                            </div>
-                            {% set current_day = event.formatted_date %}
-                        {% endif %}
-                        <div class="timeline-item">
-                            <div class="timeline-time">{{ event.time.strftime('%H:%M') }}</div>
-                            <div class="card-body">
-                                <div class="event">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <div class="event-time">{{ event.time.strftime('%H:%M') }}</div>
-                                            <div class="event-type">{{ event.title }}</div>
-                                        </div>
-                                        <div class="text-right">
-                                            <span class="badge badge-info">Настроение: {{ event.mood }}</span><br>
-                                            <span class="badge badge-secondary">Музыка: {{ event.music }}</span>
-                                        </div>
-                                    </div>
-                                    <p class="mt-3 mb-0">{{ event.activity_type }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p>У вас пока нет событий. Добавьте их, чтобы увидеть таймлайн!</p>
-            {% endif %}
-        </div>
+<div class="container">
+  <h2 class="text-center mb-4">Ваши события</h2>
+  {% if events %}
+    <div class="timeline">
+
+      {# Сначала события на сегодня #}
+      {% set today = today %}
+      {% set today_displayed = false %}
+      {% set current_day = None %}
+
+      {% for event in events|sort(attribute='time') %}
+        {% if event.time.date() == today %}
+          {% if not today_displayed %}
+            <div class="timeline-day"><h4>Сегодня</h4></div>
+            {% set today_displayed = true %}
+          {% endif %}
+          <div class="timeline-item mb-3 p-3 border rounded animate__animated animate__fadeInUp">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{{ event.time.strftime('%H:%M') }} - {{ event.title }}</strong>
+                <p class="mb-0">{{ event.activity_type }}</p>
+              </div>
+              <div class="text-right">
+                <span class="badge badge-info">{{ event.mood }}</span><br>
+                <span class="badge badge-secondary">{{ event.music }}</span>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      {# Теперь события на другие дни #}
+      {% set current_day = None %}
+      {% for event in events|sort(attribute='time') %}
+        {% if event.time.date() != today %}
+          {% if current_day != event.time.strftime('%d.%m.%Y') %}
+            {% if current_day is not none %}</div>{% endif %}
+            <div class="timeline-day"><h4>{{ event.time.strftime('%d %B %Y') }}</h4></div>
+            {% set current_day = event.time.strftime('%d.%m.%Y') %}
+          {% endif %}
+          <div class="timeline-item mb-3 p-3 border rounded animate__animated animate__fadeInUp">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{{ event.time.strftime('%H:%M') }} - {{ event.title }}</strong>
+                <p class="mb-0">{{ event.activity_type }}</p>
+              </div>
+              <div class="text-right">
+                <span class="badge badge-info">{{ event.mood }}</span><br>
+                <span class="badge badge-secondary">{{ event.music }}</span>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+
     </div>
-{% else %}
-    <div class="alert alert-warning" role="alert">
-        Войдите в аккаунт, чтобы увидеть свои события!
-    </div>
+  {% else %}
+    <p class="text-center">У вас пока нет событий.</p>
+  {% endif %}
 {% endif %}
 {% endblock %}

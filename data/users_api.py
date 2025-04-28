@@ -62,6 +62,8 @@ def delete_users(users_id):
     users = db_sess.query(User).get(users_id)
     if not users:
         return make_response(jsonify({'error': 'Not found'}), 404)
+    elif users.id == 1:
+        return make_response(jsonify({'error': 'Bad request'}), 400)
     db_sess.delete(users)
     db_sess.commit()
     return jsonify({'success': 'OK'})
@@ -77,13 +79,15 @@ def edit_users(users_id):
     elif not all(key in request.json for key in
                  ['email', 'name', 'password']):
         return make_response(jsonify({'error': 'Bad request'}), 400)
+    elif users.id == 1:
+        return make_response(jsonify({'error': 'Bad request'}), 400)
 
-    if 'email' in request.json:
-        users.email = request.json['email']
-    if 'name' in request.json:
-        users.name = request.json['name']
-    if 'password' in request.json:
-        users.set_password(request.json['password'])
+    for key in ['email', 'name', 'password']:
+        if key in request.json:
+            if key == 'password':
+                users.set_password(request.json['password'])
+            else:
+                setattr(users, key, request.json[key])
 
     db_sess.commit()
     return jsonify({'success': 'OK'})

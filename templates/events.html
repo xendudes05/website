@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<form action="" method="post">
+<div class="container mt-5">
+  <div class="card p-4 shadow-sm">
+    <form method="post">
     {{ form.hidden_tag() }}
     <p>
         {{ form.title.label }}<br>
@@ -51,4 +53,6 @@
     <p>{{ form.submit(type="submit", class="btn btn-primary") }}</p>
     {{message}}
 </form>
+</div>
+</div>
 {% endblock %}
